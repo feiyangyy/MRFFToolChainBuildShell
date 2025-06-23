@@ -1,6 +1,9 @@
 import os
 import subprocess
-import config
+# import config
+from .config import *
+from base import *
+
 MODULE_CONFIG = {
     "name": "ffmpeg",
     "libraries": [
@@ -15,6 +18,8 @@ MODULE_CONFIG = {
     "repo_env": "REPO_FFMPEG",
     "repo_save_dir": "FFmpeg"
 }
+
+
 
 def wait_proc(proc:subprocess.Popen):
   sto, ste = proc.communicate()
@@ -39,7 +44,7 @@ def build_repo_android(source_path: str, install_prefix: str, toolchain_vars: di
         env.update(toolchain_vars)
         if not os.path.exists("config.h") or force_re_compile:
           # 构建命令参数
-          cfg_flags = config.configs
+          cfg_flags = configs
           triple_cc = env.get('TRIPLE_CC', '')
           ar = env.get('AR', '')
           nm = env.get('NM', '')
@@ -87,3 +92,48 @@ def build_repo_android(source_path: str, install_prefix: str, toolchain_vars: di
       os.chdir(old_wk_dir)
       
 # after build
+
+class FFMpegModule(FFModule):
+  def __init__(self, cfg: BuildConfigure,toolchain:ToolchainVars, host:HostVars):
+    super().__init__(cfg, toolchain, host)
+  
+  def get_module_config(self):
+    return MODULE_CONFIG
+  
+
+  def do_init():
+    """do the initialization
+    1. clone the source code, or download the library
+    2. prepare all the patches
+    """
+    pass
+
+  def do_install_prebuilt():
+    """install the prebuilt libraries
+    if no prebuilt, an error will be raised.
+    """
+    pass
+  
+  def prebuild(self):
+    """jobs before building
+    1. copy to arch
+    2. apply patches
+    3. detect and setup third libraries
+    4. prepare the directories
+    """
+    pass
+  
+  def build(self, toolchain_vars: dict, host_vars: dict):
+    """do the build work
+
+    Args:
+        toolchain_vars (dict): the detected toolchain variables
+        host_vars: the detected host variables
+    """
+    pass
+  
+  def postbuild(self):
+    """dirty works after build
+    """
+    pass
+  

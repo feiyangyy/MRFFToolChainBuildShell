@@ -37,6 +37,28 @@ class BuildConfigure(object):
   workspace: str
   install_prefix: str
   action: str
+  
+  def prepare(self):
+    if not os.path.exists(self.workspace):
+      os.makedirs(self.workspace)
+    if not os.path.exists(self.install_prefix):
+      os.makedirs(self.install_prefix)
+    if not os.path.exists(self.get_arch_workspace()):
+      os.makedirs(self.get_arch_workspace())
+    if not os.path.exists(self.get_patch_dir()):
+      os.makedirs(self.get_patch_dir())
+    if not os.path.exists(self.get_samples_dir()):
+      os.makedirs(self.get_samples_dir())
+    
+  def get_arch_workspace(self):
+    return os.path.join(self.workspace, self.arch)
+  
+  def get_patch_dir(self):
+    return os.path.join(self.workspace, "patches")
+  
+  def get_samples_dir(self):
+    return os.path.join(self.workspace, "samples")
+  
 
 @dataclass
 class HostVars(object):
@@ -166,7 +188,7 @@ def get_platform_envs(cfg:BuildConfigure):
 
 
 class FFModule(ABC):
-  def __init__(self, cfg: BuildConfigure, configs:dict = None):
+  def __init__(self, cfg: BuildConfigure, toolchain:ToolchainVars, host:HostVars):
     """_summary_
 
     Args:
@@ -175,13 +197,18 @@ class FFModule(ABC):
     """
     self.cfg = cfg
     self.repo = None
-    if configs:
-      self.repo = Repo(configs["repo_url"], configs["repo_save_dir"])
     
+  @abstractmethod
+  def get_module_config(self) ->dict:
+    pass
   
-  def init_sample_repo(self):
+  def init_sample_repo(self, repo_url, repo_save):
+    self.repo = Repo(repo_url, repo_save)
     if self.repo:
-      self.repo.clone()
+      if not os.path.exists(repo_save):
+        self.repo.clone()
+        return
+      print(f"Sample repo {repo_save} exists, skip cloing!")
     else:
       raise InitError("No repo, maybe not initialized?")
   
@@ -202,21 +229,42 @@ class FFModule(ABC):
   
   @abstractmethod
   def do_init():
+    """do the initialization
+    1. clone the source code, or download the library
+    2. prepare all the patches
+    """
     pass
 
   @abstractmethod
   def do_install_prebuilt():
+    """install the prebuilt libraries
+    if no prebuilt, an error will be raised.
+    """
     pass
   
   @abstractmethod
   def prebuild(self):
+    """jobs before building
+    1. copy to arch
+    2. apply patches
+    3. detect and setup third libraries
+    4. prepare the directories
+    """
     pass
   
   @abstractmethod
-  def build(self, toolchain_vars: dict):
+  def build(self, toolchain_vars: dict, host_vars: dict):
+    """do the build work
+
+    Args:
+        toolchain_vars (dict): the detected toolchain variables
+        host_vars: the detected host variables
+    """
     pass
   
   @abstractmethod
   def postbuild(self):
+    """dirty works after build
+    """
     pass
   
