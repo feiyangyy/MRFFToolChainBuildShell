@@ -1,5 +1,6 @@
 import argparse
 import logging
+import base
 
 def setup_loggers(logger_path:str):
   logger = logging.getLogger('build')
@@ -29,9 +30,17 @@ def parse_args():
     # only avalibale for apple
     parser.add_argument('-a', '--arch', type=str, default='arm64', choices=['arm64', 'arm64-simulator','x86_64', 'x86_64-simulator', 'all'], help='arch must be: [arm64|arm64-simulator|x86_64|x86_64-simulator|all], only avaliable for apple')
     parser.add_argument('-w', '--workspace', type=str, default='build', help='specify workspace')
+    parser.add_argument('--prefix', type=str, help='install the library')
     parser.add_argument('--install', action='store_true', help='install the library')
     parser.add_argument('--init', action='store_true', help='initialize the library')
     parser.add_argument('--build', action='store_true', help='build the library')
 
     args = parser.parse_args()
     return args
+  
+if __name__ == "__main__":
+  args = parse_args()
+  logger = setup_loggers("build.log")
+  args = base.BuildConfigure(args.platform, args.arch, args.workspace, args.prefix, args.build)
+  print(base.get_platform_envs(args))
+  pass

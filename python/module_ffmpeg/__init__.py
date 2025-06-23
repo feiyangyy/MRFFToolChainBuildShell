@@ -23,11 +23,11 @@ def wait_proc(proc:subprocess.Popen):
     return False
   return True
 
-
+# before build
 def detect_openssl():
   pass
 
-
+# building
 def build_repo_android(source_path: str, install_prefix: str, toolchain_vars: dict, force_re_compile: bool = False):
     if not os.path.exists(source_path):
         raise IOError(f"Can not find source {source_path}, clone first!")
@@ -85,3 +85,5 @@ def build_repo_android(source_path: str, install_prefix: str, toolchain_vars: di
       raise
     finally:
       os.chdir(old_wk_dir)
+      
+# after build
