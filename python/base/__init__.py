@@ -18,17 +18,44 @@ class ConfigureError(Exception):
 
 
 class Repo(object):
-  def __init__(self, repo_url, local_path):
+  def __init__(self, repo_url, local_path, has_submodule=False):
     self.repo_url = repo_url
     self.path_to_clone = local_path
+    self.__repo = None
+    self.__has_sub = has_submodule
     if not os.path.exists(self.path_to_clone):
       print(f"Directory {self.path_to_clone} does not exist, make it.")
       os.makedirs(self.path_to_clone)
   
-  def clone(self):
-    git.Repo.clone_from(self.repo_url, self.path_to_clone)
-    print(f"{self.repo_url} is cloned into {self.path_to_clone}")
+  def init(self):
+    if os.path.exists(self.path_to_clone):
+      self.__repo = git.Repo(self.path_to_clone)
+    else:
+      self.__repo = git.Repo.clone_from(self.repo_url, self.path_to_clone)
+      print(f"{self.repo_url} is cloned into {self.path_to_clone}")
+    if self.__has_sub:
+      self.__repo.submodule_update(init=True, recursive=True)
+      print("Submodules are updated")
   
+  def get_repo_dir(self):
+    return self.__repo.working_dir
+
+  def create_local_branch_on_commit(self, branch_name, commit:str):
+    self.__repo.commit(commit)
+    branch = self.__repo.create_head(branch_name)
+    branch.checkout()
+
+  def apply_patches(self, patch_dir):
+    old_dir = os.curdir()
+    os.chdir(self.get_repo_dir())
+    res = os.system(f"git am --whitespace=fix --keep {patch_dir}/*.patch")
+    os.chdir(old_dir)
+    if res:
+      raise InitError(f"Apply patches failed for {self.get_repo_dir()} within {patch_dir}")
+  
+  def reset(self):
+    if os.path.isdir(os.path.join(self.get_repo_dir(), '.git', 'rebase-apply')):
+      self.__repo.git.am('--skip')
 
 @dataclass
 class BuildConfigure(object):
@@ -46,7 +73,13 @@ class BuildConfigure(object):
     if not os.path.exists(self.get_arch_workspace()):
       os.makedirs(self.get_arch_workspace())
     if not os.path.exists(self.get_patch_dir()):
-      os.makedirs(self.get_patch_dir())
+      try:
+        patch_dir = self.get_patch_dir()
+        os.symlink(os.path.abspath('../../patches'), patch_dir)
+      except FileExistsError:
+        pass
+      except:
+        raise
     if not os.path.exists(self.get_samples_dir()):
       os.makedirs(self.get_samples_dir())
     
@@ -197,20 +230,23 @@ class FFModule(ABC):
     """
     self.cfg = cfg
     self.repo = None
+    # will be initilaized by subclasses
+    self.module_config = None
     
   @abstractmethod
   def get_module_config(self) ->dict:
     pass
   
   def init_sample_repo(self, repo_url, repo_save):
-    self.repo = Repo(repo_url, repo_save)
-    if self.repo:
-      if not os.path.exists(repo_save):
-        self.repo.clone()
-        return
-      print(f"Sample repo {repo_save} exists, skip cloing!")
-    else:
-      raise InitError("No repo, maybe not initialized?")
+    # TODO fix the spelling
+    self.repo = Repo(repo_url, repo_save, self.module_config.get("has_submodule", False))
+    if not os.path.exists(repo_save):
+      self.repo.clone()
+      return
+    
+    # check if there is a patch
+    print(f"Sample repo {repo_save} exists, skip cloing!")
+
   
   def copy_sample_to(self, target_dir):
     if not self.repo:

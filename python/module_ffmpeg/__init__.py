@@ -16,7 +16,9 @@ MODULE_CONFIG = {
     ],
     "repo": "https://github.com/FFmpeg/FFmpeg.git",
     "repo_env": "REPO_FFMPEG",
-    "repo_save_dir": "FFmpeg"
+    "repo_save_dir": "FFmpeg",
+    "has_submodule": False,
+    "patch_dir":"ffmpeg"
 }
 
 
@@ -96,6 +98,7 @@ def build_repo_android(source_path: str, install_prefix: str, toolchain_vars: di
 class FFMpegModule(FFModule):
   def __init__(self, cfg: BuildConfigure,toolchain:ToolchainVars, host:HostVars):
     super().__init__(cfg, toolchain, host)
+    self.module_config=MODULE_CONFIG
   
   def get_module_config(self):
     return MODULE_CONFIG
