@@ -23,11 +23,16 @@ class Repo(object):
     self.path_to_clone = local_path
     self.__repo = None
     self.__has_sub = has_submodule
-    if not os.path.exists(self.path_to_clone):
-      print(f"Directory {self.path_to_clone} does not exist, make it.")
-      os.makedirs(self.path_to_clone)
+    par_dir = os.path.dirname(self.path_to_clone)
+    if not os.path.exists(par_dir):
+      print(f"Directory {par_dir} does not exist, make it.")
+      os.makedirs(par_dir)
   
   def init(self):
+    """init repo
+    init repo from an exsit repo or clone it.
+    if repo has submodule, update it.
+    """
     if os.path.exists(self.path_to_clone):
       self.__repo = git.Repo(self.path_to_clone)
     else:
@@ -46,7 +51,12 @@ class Repo(object):
     branch.checkout()
 
   def apply_patches(self, patch_dir):
-    old_dir = os.curdir()
+    # 修正 os.curdir() 为 os.getcwd()
+    if not os.path.exists(patch_dir):
+      print(f"Directory {patch_dir} does not exist, skip apply!")
+      return
+    patch_dir = os.path.abspath(patch_dir)
+    old_dir = os.getcwd()
     os.chdir(self.get_repo_dir())
     res = os.system(f"git am --whitespace=fix --keep {patch_dir}/*.patch")
     os.chdir(old_dir)
@@ -54,9 +64,15 @@ class Repo(object):
       raise InitError(f"Apply patches failed for {self.get_repo_dir()} within {patch_dir}")
   
   def reset(self):
+    """abort rebase and fetch all tags
+    """
     if os.path.isdir(os.path.join(self.get_repo_dir(), '.git', 'rebase-apply')):
       self.__repo.git.am('--skip')
-
+    self.__repo.git.reset('--hard')
+    # 使用 GitPython API 实现 git fetch --all --tags
+    for remote in self.__repo.remotes:
+      remote.fetch(tags=True, prune=True)
+    
 @dataclass
 class BuildConfigure(object):
   platform: str
@@ -240,12 +256,9 @@ class FFModule(ABC):
   def init_sample_repo(self, repo_url, repo_save):
     # TODO fix the spelling
     self.repo = Repo(repo_url, repo_save, self.module_config.get("has_submodule", False))
-    if not os.path.exists(repo_save):
-      self.repo.clone()
-      return
-    
-    # check if there is a patch
-    print(f"Sample repo {repo_save} exists, skip cloing!")
+    self.repo.init()
+    self.repo.reset()
+    self.repo.apply_patches(os.path.join(self.cfg.get_patch_dir(), self.module_config.get("patch_dir", "Not exist")))
 
   
   def copy_sample_to(self, target_dir):

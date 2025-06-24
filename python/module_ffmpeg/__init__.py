@@ -16,9 +16,9 @@ MODULE_CONFIG = {
     ],
     "repo": "https://github.com/FFmpeg/FFmpeg.git",
     "repo_env": "REPO_FFMPEG",
-    "repo_save_dir": "FFmpeg",
+    "repo_save_dir": "ffmpeg7",
     "has_submodule": False,
-    "patch_dir":"ffmpeg"
+    "patch_dir":"ffmpeg-n7.1.1"
 }
 
 
